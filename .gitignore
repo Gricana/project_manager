@@ -1,2 +1,4 @@
 /app/migrations/*
 .idea/*
+/deploy/conf/*
+/deploy/conf/
