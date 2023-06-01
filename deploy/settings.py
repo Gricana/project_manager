@@ -1,10 +1,18 @@
 import os
 
 CONFIG_DIR = os.getenv('CONFIG_DIR', '/path/to/config')
+<<<<<<< HEAD
 PROJECT_DIR = os.getenv('PROJECT_DIR', '/path/to/project')
 
 YC_FOLDER_ID = os.getenv('YC_FOLDER_ID')
 YC_IAM_TOKEN = os.getenv('YC_IAM_TOKEN')
+=======
+
+YC_FOLDER_ID = os.getenv('YC_FOLDER_ID')
+YC_IAM_TOKEN = os.getenv('YC_IAM_TOKEN')
+YC_KMS_ID = os.getenv('YC_KMS_ID')
+YC_KMS_VERSION = os.getenv('YC_KMS_VERSION')
+>>>>>>> Added conf file encrypting
 YC_KMS_ALGORITHM = 'AES_256'
 YC_KMS_ROTATION_PERIOD = '604800s'
 
