@@ -2,6 +2,7 @@ from deploy.settings import PROJECT_DIR
 from git import Repo
 import os
 import re
+import shutil
 
 
 class ProjectPreparerMeta(type):
@@ -61,7 +62,7 @@ class DjangoRunner(ProjectRunner):
         super().__prepare_project__()
 
 
-runner = MyProjectRunner(repo_url="https://github.com/your/repository.git", user_id=32423525626)
+runner = ProjectRunner(repo_url="https://github.com/your/repository.git", user_id=32423525626)
 runner.setup_containers()
 runner.setup_nginx()
 runner.setup_gunicorn()
