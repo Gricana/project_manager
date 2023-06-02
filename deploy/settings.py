@@ -1,6 +1,7 @@
 import os
 
 CONFIG_DIR = os.getenv('CONFIG_DIR', '/path/to/config')
+PROJECT_DIR = os.getenv('PROJECT_DIR', '/path/to/project')
 
 YC_FOLDER_ID = os.getenv('YC_FOLDER_ID')
 YC_IAM_TOKEN = os.getenv('YC_IAM_TOKEN')
