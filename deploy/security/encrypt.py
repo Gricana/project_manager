@@ -12,16 +12,18 @@ class ConfigStorage:
 
     def create_key(self):
         if not ConfigStorage.get_key(self.user_id):
+
             payload = {
                 "folderId": YC_FOLDER_ID,
-                "name": str(self.user_id),
-                "description": self.project_name,
+                "name": self.project_name,
+                "description": str(self.user_id),
                 "defaultAlgorithm": YC_KMS_ALGORITHM,
                 "rotationPeriod": YC_KMS_ROTATION_PERIOD,
                 "deletionProtection": False
             }
 
-            response = requests.post(YC_KMS_ENDPOINT['create'], json=payload,
+            response = requests.post(YC_KMS_ENDPOINT['create'],
+                                     json=payload,
                                      headers={
                                          "Authorization": "Bearer {}".format(YC_IAM_TOKEN),
                                      })
@@ -31,7 +33,7 @@ class ConfigStorage:
                 return key_id
             else:
                 print(f"Key creation failed with status code {response.status_code} - {response.text}")
-                return None
+            return None
 
     @staticmethod
     def get_key(user_id):
@@ -40,14 +42,14 @@ class ConfigStorage:
                                 headers={
                                     "Authorization": "Bearer {}".format(YC_IAM_TOKEN)
                                 })
-        print(response.status_code)
+
         if response.status_code == 200:
             data = response.json()
             keys = data['keys']
 
-            matching_keys = filter(lambda key: key["name"] == str(user_id), keys)
+            matching_keys = filter(lambda key: key["description"] == str(user_id), keys)
             matching_key = next(matching_keys, None)
-            print(keys)
+
             if matching_key:
                 return matching_key
         else:
