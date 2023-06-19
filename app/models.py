@@ -1,7 +1,5 @@
 from datetime import datetime
-import hashlib
-import secrets
-from app.run import db
+from run import db
 
 
 class User(db.Model):
@@ -9,6 +7,7 @@ class User(db.Model):
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     username = db.Column(db.String(32), nullable=False)
+    tg_id = db.Column(db.Integer, unique=True)
 
     def get_projects(self):
         return self.projects.all()
@@ -27,16 +26,20 @@ class Project(db.Model):
     __tablename__ = 'projects'
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    name = db.Column(db.String(50), nullable=False)
+    name = db.Column(db.String(50), nullable=False, unique=True)
     description = db.Column(db.Text(100), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'))
-    user = db.relationship('User', backref='projects', cascade='all,delete', lazy='dynamic')
-    status = db.Column(db.Enum('Запущен', 'Остановлен', 'Перезапущен'), default='Остановлен', nullable=False)
+    user = db.relationship('User', backref='projects', cascade='all,delete')
+    status = db.Column(db.Enum('Запущен', 'Остановлен'), default='Остановлен', nullable=False)
 
     def save(self):
         db.session.add(self)
+        db.session.commit()
+
+    def delete(self):
+        db.session.delete(self)
         db.session.commit()
 
     def update(self, name=None, description=None, status=None):

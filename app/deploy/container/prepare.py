@@ -1,12 +1,11 @@
-from deploy.settings import PROJECT_DIR, SSL_PATH, TEMPLATE_CONF_DIR, SSL_CERT_PATH, SSL_KEY_PATH, MYSQL_ROOT_PASSWORD
+from app.deploy.settings import PROJECT_DIR, SSL_PATH, TEMPLATE_CONF_DIR, SSL_CERT_PATH, SSL_KEY_PATH
 from dotenv import dotenv_values
 from git import Repo
-from .exceptions import SecurityIssueError
+from app.deploy.container.exceptions import SecurityIssueError
 import importlib
 import io
 import os
 import re
-import shutil
 import stat
 import subprocess
 import yaml
@@ -123,7 +122,7 @@ class DjangoPrepare(ProjectPrepare):
         self.extend_settings()
         self.setup_dockerfile()
         self.setup_sql()
-        self.setup_nginx_container()
+        # self.setup_nginx_container()
         self.setup_reverse_nginx()
         self.setup_compose()
         self.set_host()
@@ -164,10 +163,10 @@ class DjangoPrepare(ProjectPrepare):
             content = f.read()
 
         content = re.sub(pattern=r'(ALLOWED_HOSTS\s*=\s*\[).*?(\])',
-                         repl=rf'\1"{self.subdomain}.localhost"\2',
+                         repl=rf'\1"{self.subdomain}.ewdbot.com"\2',
                          string=content, flags=re.DOTALL)
         content = re.sub(pattern=r'(CSRF_TRUSTED_ORIGINS\s*=\s*\[).*?(\])',
-                         repl=rf'\1"https://{self.subdomain}.localhost"\2',
+                         repl=rf'\1"https://{self.subdomain}.ewdbot.com"\2',
                          string=content, flags=re.DOTALL)
 
         with open(self.settings_module.__file__, 'w') as file:

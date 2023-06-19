@@ -11,7 +11,8 @@ class ConfigStorage:
         self.user_id = user_id
 
     def create_key(self):
-        if not ConfigStorage.get_key(self.user_id):
+        key_id = ConfigStorage.get_key_id(self.user_id)
+        if not key_id:
 
             payload = {
                 "folderId": YC_FOLDER_ID,
@@ -30,7 +31,6 @@ class ConfigStorage:
 
             if response.status_code == 200:
                 key_id = response.json()['id']
-                return key_id
             else:
                 print(f"Key creation failed with status code {response.status_code} - {response.text}")
             return None
@@ -80,7 +80,7 @@ class ConfigStorage:
             self.to_file(encrypted_content)
         else:
             print(f"Encryption failed with status code {response.status_code} - {response.text}")
-            return None
+        return key_id
 
     def to_file(self, ciphertext):
         target_dir = os.path.join(CONFIG_DIR, str(self.user_id))
