@@ -21,12 +21,11 @@
    ```sh flask db migrate -m "your message"```
    ```sh flask db upgrade```
 7. В финале нужно запустить ТОЛЬКО стартовый скрипт API run.py
-   
-   - ```sh
+   ```sh
    flask run
    ```
    - либо с указанием хоста и порта
    
-   - ```sh
+   ```sh
    flask run --host=127.0.0.1 --port=6699
    ```
