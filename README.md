@@ -17,10 +17,14 @@
    !!!Предварительно настройте [Yandex Cloud](https://yandex.cloud/), подключите и настройте сервис [yandex KMS](https://yandex.cloud/ru/docs/kms/) для выполнения шифрования файлов, а также приобретите SSL-сертификат для работы развернутых сайтов по протоколу HTTP
 6. ВЫполнить миграции из директории **app**
    ```sh flask db init```
+   
    ```sh flask db migrate -m "your message"```
+   
    ```sh flask db migrate -m "your message"```
+   
    ```sh flask db upgrade```
-7. В финале нужно запустить ТОЛЬКО стартовый скрипт API run.py
+   
+8. В финале нужно запустить ТОЛЬКО стартовый скрипт API run.py
    ```sh
    flask run
    ```
