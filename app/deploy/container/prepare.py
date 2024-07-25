@@ -12,10 +12,12 @@ import yaml
 
 
 class ProjectPreparerMeta(type):
+    """
+    Metaclass for checking the presence of the __prepare_project__ method in subclasses.
+    """
     def __new__(cls, name, bases, attrs):
         if "__prepare_project__" not in attrs:
             raise NotImplementedError("Subclasses must implement __prepare_project__ method.")
-
         return super().__new__(cls, name, bases, attrs)
 
     def __call__(cls, *args, **kwargs):
@@ -25,50 +27,72 @@ class ProjectPreparerMeta(type):
 
 
 class ProjectPrepare(metaclass=ProjectPreparerMeta):
-
+    """
+    A class for preparing a project for deployment
+    """
     PROJECT_TEMPLATE = "{repo_name}_{user_id}"
 
     def __init__(self, repo_url: str, subdomain: str, user_id: int, decrypted_settings: str):
-        self.repo_url = repo_url
-        self.subdomain = subdomain
-        self.user_id = str(user_id)
-        self.__decrypted_settings = decrypted_settings
+        self.repo_url = repo_url  # URL repository
+        self.subdomain = subdomain  # The project subdomain
+        self.user_id = str(user_id)  # User ID
+        self.__decrypted_settings = decrypted_settings  # Decrypted settings
 
-        self.dir_name = None
-        self.abs_path = None
+        self.dir_name = None  # Project dir name
+        self.abs_path = None  # Absolute path to the project
 
     def __prepare_project__(self):
+        """
+        The main method for preparing a project
+        """
         self.generate_project_dir()
         self.clone()
         self.check_dependencies()
         self.scan()
 
     def generate_project_dir(self):
+        """
+        Generating the name of the project dir
+        """
         repo_name = re.search(r"/([^/]+).git$", self.repo_url).group(1)
         self.dir_name = self.PROJECT_TEMPLATE.format(repo_name=repo_name, user_id=self.user_id)
 
     def clone(self):
+        """
+        Cloning a git repository
+        """
         self.abs_path = os.path.join(PROJECT_DIR, self.dir_name)
         self.delete()
         Repo.clone_from(self.repo_url, self.abs_path)
 
     def delete(self):
+        """
+        Deleting an existing project dir
+        """
         if os.path.exists(self.abs_path):
             command = ["sudo", "rm", "-rf", self.abs_path]
             subprocess.run(command)
-            # shutil.rmtree(self.abs_path, onerror=ProjectPrepare.onerror)
 
-    @staticmethod
-    def onerror(func, path, exc_info):
-        os.chmod(path, stat.S_IWRITE)
-        func(path)
+    # @staticmethod
+    # def onerror(func, path, exc_info):
+    #     """
+    #     Error handling when deleting files
+    #     """
+    #     os.chmod(path, stat.S_IWRITE)
+    #     func(path)
 
     def check_dependencies(self):
+        """
+        Checking for a dependency file
+        """
         requirements_file = os.path.join(self.abs_path, "requirements.txt")
         if not os.path.exists(requirements_file):
             raise FileNotFoundError("requirements.txt file not found.")
 
     def scan(self):
+        """
+        Scanning a project for vulnerabilities
+        """
         files_to_scan = []
 
         for root, dirs, files in os.walk(self.abs_path):
@@ -81,7 +105,7 @@ class ProjectPrepare(metaclass=ProjectPreparerMeta):
         for file_path in files_to_scan:
             command = f"bandit -r {file_path} --severity-level medium --confidence-level high"
             result = subprocess.run(command, shell=True, capture_output=True, text=True)
-            
+
             if result.returncode != 0:
                 issues_found = True
 
@@ -90,24 +114,38 @@ class ProjectPrepare(metaclass=ProjectPreparerMeta):
                 raise SecurityIssueError(f"В проекте обнаружены ошибки безопасности \n{result.stdout}")
 
     def settings_to_dict(self):
+        """
+        Convert decrypted settings into a dict
+        """
         return dotenv_values(stream=io.StringIO(self.__decrypted_settings))
 
     def get_app_ports(self):
-        result = subprocess.check_output(['bash', '-c', f'source {TEMPLATE_CONF_DIR}get_free_app_port.sh && echo $PORT'])
-        app_port = result.decode('utf-8').strip()
-        result = subprocess.check_output(['bash', '-c', f'source {TEMPLATE_CONF_DIR}get_free_nginx_port.sh && echo $PORT'])
-        nginx_port = result.decode('utf-8').strip()
-        result = subprocess.check_output(['bash', '-c', f'source {TEMPLATE_CONF_DIR}get_free_redis_port.sh && echo $PORT'])
-        redis_port = result.decode('utf-8').strip()
+        """
+        Obtaining free ports for an app.
+        """
+        port_scripts = [
+            'get_free_app_port.sh',
+            'get_free_nginx_port.sh',
+            'get_free_redis_port.sh'
+        ]
 
-        return {
-            'APP_PORT': app_port,
-            'NGINX_PORT': nginx_port,
-            'REDIS_PORT': redis_port
-        }
+        port_keys = ['APP_PORT', 'NGINX_PORT', 'REDIS_PORT']
+        ports = {}
+
+        for script, key in zip(port_scripts, port_keys):
+            try:
+                result = subprocess.check_output(['bash', '-c', f'source {TEMPLATE_CONF_DIR}{script} && echo $PORT'])
+                ports[key] = result.decode('utf-8').strip()
+            except subprocess.CalledProcessError as e:
+                raise RuntimeError(f"Failed to get port from {script}: {e.output}")
+
+        return ports
 
 
 class DjangoPrepare(ProjectPrepare):
+    """
+    A class for preparing a Django project for deployment.
+    """
 
     def __init__(self, repo_url, subdomain, user_id, decrypted_settings):
         super().__init__(repo_url, subdomain, user_id, decrypted_settings)
@@ -115,19 +153,27 @@ class DjangoPrepare(ProjectPrepare):
         self.__settings_dict = None
 
     def __prepare_project__(self):
+        """
+        Basic method for preparing a Django project
+        """
         super().__prepare_project__()
         self.setup()
 
     def setup(self):
+        """
+        Project setup
+        """
         self.extend_settings()
         self.setup_dockerfile()
         self.setup_sql()
-        # self.setup_nginx_container()
         self.setup_reverse_nginx()
         self.setup_compose()
         self.set_host()
 
     def __check_settings_module(self, module: str):
+        """
+        Checking the presence of the settings module
+        """
         try:
             prev_dir = os.getcwd()
             os.chdir(self.abs_path)
@@ -137,6 +183,9 @@ class DjangoPrepare(ProjectPrepare):
             raise ModuleNotFoundError(f'Модуль с настройками {module} не найден!')
 
     def extend_settings(self):
+        """
+        Expanding project settings
+        """
         self.__settings_dict = self.settings_to_dict()
 
         django_settings_module = self.__settings_dict.get('DJANGO_SETTINGS_MODULE')
@@ -159,6 +208,9 @@ class DjangoPrepare(ProjectPrepare):
         self.__settings_dict.update(self.get_app_ports())
 
     def set_host(self):
+        """
+        Setting the host in Django settings
+        """
         with open(self.settings_module.__file__, 'r') as f:
             content = f.read()
 
@@ -173,11 +225,17 @@ class DjangoPrepare(ProjectPrepare):
             file.write(content)
 
     def update_env(self):
+        """
+        Update environment variables
+        """
         env_args = " ".join([f"{key}={value}" for key, value in self.__settings_dict.items()])
         build_args = " ".join([f"--build-arg {key}={value}" for key, value in self.__settings_dict.items()])
         return env_args, build_args
 
     def setup_compose(self):
+        """
+        Setting up docker-compose.yml file
+        """
         with open(f'{TEMPLATE_CONF_DIR}docker-compose.yml', 'r') as file:
             compose_data = yaml.safe_load(file)
         compose_data['services']['web']['build']['args'].extend([f"{key}=${{{key}}}" for key in self.__settings_dict])
@@ -188,6 +246,9 @@ class DjangoPrepare(ProjectPrepare):
             yaml.dump(compose_data, file, indent=2)
 
     def setup_dockerfile(self):
+        """
+        Dockerfile setup
+        """
         with open(f"{TEMPLATE_CONF_DIR}Dockerfile") as file:
             content = file.read()
 
@@ -195,6 +256,9 @@ class DjangoPrepare(ProjectPrepare):
             file.write(content.format(DIR_NAME=self.__settings_dict['DIR_NAME']))
 
     def setup_sql(self):
+        """
+        Setting up the init.sql file
+        """
         with open(f"{TEMPLATE_CONF_DIR}init.sql") as file:
             content = file.read()
 
@@ -202,6 +266,9 @@ class DjangoPrepare(ProjectPrepare):
             file.write(content.format(**self.__settings_dict))
 
     def setup_nginx_container(self):
+        """
+        Setting up configuration for Nginx container
+        """
         with open(f"{TEMPLATE_CONF_DIR}nginx.conf") as file:
             content = file.read()
 
@@ -212,6 +279,9 @@ class DjangoPrepare(ProjectPrepare):
             file.write(content.format(**self.__settings_dict))
 
     def setup_reverse_nginx(self):
+        """
+        Setting up a reverse proxy for Nginx
+        """
         with open(f"{TEMPLATE_CONF_DIR}reverse_nginx") as file:
             content = file.read()
 
@@ -219,17 +289,25 @@ class DjangoPrepare(ProjectPrepare):
             file.write(content.format(**self.__settings_dict))
 
     def build_container(self):
+        """
+        Building a Docker container
+        """
         env_args, build_args = self.update_env()
         command = env_args + ' docker compose build ' + build_args + ' --no-cache'
         subprocess.run(command, cwd=self.abs_path, shell=True)
 
     def up_services(self):
+        """
+        Running Docker services
+        """
         env_args, _ = self.update_env()
         command = env_args + ' docker compose up -d'
         subprocess.run(command, cwd=self.abs_path, shell=True)
         subprocess.run(['sudo', 'service', 'nginx', 'restart'])
 
     def down_services(self):
+        """
+        Stopping Docker services
+        """
         env_args, _ = self.update_env()
         subprocess.run(env_args + ' docker compose down', cwd=self.abs_path, shell=True)
-
