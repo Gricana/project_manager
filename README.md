@@ -43,7 +43,7 @@ flask db migrate -m "your message"
 flask db upgrade
 ```
 
-8. Finally, you need to run ONLY the API start script run.py
+4. Finally, you need to run ONLY the API start script run.py
 ```sh
 flask run
 ```
@@ -52,3 +52,5 @@ flask run
 ```sh
 flask run --host=127.0.0.1 --port=6699
 ```
+## Contributing
+  Contributions are welcome! If you have suggestions for improvements or find any bugs, please open an issue or submit a pull request on GitHub.
