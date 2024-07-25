@@ -1,0 +1,43 @@
+version: '3'
+
+services:
+  db:
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DATABASE_PASSWORD}
+      MYSQL_DATABASE: ${DATABASE_NAME}
+      MYSQL_USER: ${DATABASE_USER}
+      MYSQL_PASSWORD: ${DATABASE_PASSWORD}
+    image: mysql:8.0.32
+    volumes:
+      - ./data/db:/var/lib/mysql
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+
+  redis:
+    image: redis:latest
+    volumes:
+      - ./data/redis:/data
+    environment:
+      REDIS_PORT: ${REDIS_PORT}
+    ports:
+      - "${REDIS_PORT}:6379"
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - DB_HOST=db
+    command: >
+      bash -c "sleep 300 && python manage.py migrate && python manage.py collectstatic --no-input &&
+      python manage.py shell -c 'from django.contrib.auth import get_user_model; import os; User = get_user_model();
+      User.objects.create_superuser(os.getenv(\"ADMIN_USERNAME\"), os.getenv(\"ADMIN_EMAIL\"), os.getenv(\"ADMIN_PASSWORD\")) 
+      if not User.objects.filter(email=os.getenv(\"ADMIN_EMAIL\")).exists() else None' &&
+      gunicorn ${SETTINGS_MODULE}.wsgi:application --bind 0.0.0.0:${APP_PORT} --workers 5"
+    environment:
+      DB_HOST: db
+    depends_on:
+      - db
+    ports:
+      - ${APP_PORT}:${APP_PORT}
+    volumes:
+      - .:/code
